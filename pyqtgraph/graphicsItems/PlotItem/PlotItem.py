@@ -143,7 +143,7 @@ class PlotItem(GraphicsWidget):
         self.layout.setVerticalSpacing(0)
         
         if viewBox is None:
-            viewBox = ViewBox()
+            viewBox = ViewBox(enableMenu=enableMenu)
         self.vb = viewBox
         self.vb.sigStateChanged.connect(self.viewStateChanged)
         self.setMenuEnabled(enableMenu, enableMenu) ## en/disable plotitem and viewbox menus
@@ -209,64 +209,13 @@ class PlotItem(GraphicsWidget):
         self.avgCurves = {}
         
         ### Set up context menu
-        
-        w = QtGui.QWidget()
-        self.ctrl = c = Ui_Form()
-        c.setupUi(w)
-        dv = QtGui.QDoubleValidator(self)
-        
-        menuItems = [
-            ('Transforms', c.transformGroup),
-            ('Downsample', c.decimateGroup),
-            ('Average', c.averageGroup),
-            ('Alpha', c.alphaGroup),
-            ('Grid', c.gridGroup),
-            ('Points', c.pointsGroup),
-        ]
-        
-        
-        self.ctrlMenu = QtGui.QMenu()
-        
-        self.ctrlMenu.setTitle('Plot Options')
-        self.subMenus = []
-        for name, grp in menuItems:
-            sm = QtGui.QMenu(name)
-            act = QtGui.QWidgetAction(self)
-            act.setDefaultWidget(grp)
-            sm.addAction(act)
-            self.subMenus.append(sm)
-            self.ctrlMenu.addMenu(sm)
-        
-        self.stateGroup = WidgetGroup()
-        for name, w in menuItems:
-            self.stateGroup.autoAdd(w)
+        self.ctrl = None
+        self.ctrlMenu = None
+        self.subMenus = None
+        if enableMenu:
+            self.setupMenu()
         
         self.fileDialog = None
-        
-        c.alphaGroup.toggled.connect(self.updateAlpha)
-        c.alphaSlider.valueChanged.connect(self.updateAlpha)
-        c.autoAlphaCheck.toggled.connect(self.updateAlpha)
-
-        c.xGridCheck.toggled.connect(self.updateGrid)
-        c.yGridCheck.toggled.connect(self.updateGrid)
-        c.gridAlphaSlider.valueChanged.connect(self.updateGrid)
-
-        c.fftCheck.toggled.connect(self.updateSpectrumMode)
-        c.logXCheck.toggled.connect(self.updateLogMode)
-        c.logYCheck.toggled.connect(self.updateLogMode)
-
-        c.downsampleSpin.valueChanged.connect(self.updateDownsampling)
-        c.downsampleCheck.toggled.connect(self.updateDownsampling)
-        c.autoDownsampleCheck.toggled.connect(self.updateDownsampling)
-        c.subsampleRadio.toggled.connect(self.updateDownsampling)
-        c.meanRadio.toggled.connect(self.updateDownsampling)
-        c.clipToViewCheck.toggled.connect(self.updateDownsampling)
-
-        self.ctrl.avgParamList.itemClicked.connect(self.avgParamListClicked)
-        self.ctrl.averageGroup.toggled.connect(self.avgToggled)
-        
-        self.ctrl.maxTracesCheck.toggled.connect(self.updateDecimation)
-        self.ctrl.maxTracesSpin.valueChanged.connect(self.updateDecimation)
         
         self.hideAxis('right')
         self.hideAxis('top')
@@ -290,6 +239,63 @@ class PlotItem(GraphicsWidget):
         if len(kargs) > 0:
             self.plot(**kargs)
         
+    def setupMenu(self):
+            w = QtGui.QWidget()
+            self.ctrl = c = Ui_Form()
+            c.setupUi(w)
+            dv = QtGui.QDoubleValidator(self)
+            
+            menuItems = [
+                ('Transforms', c.transformGroup),
+                ('Downsample', c.decimateGroup),
+                ('Average', c.averageGroup),
+                ('Alpha', c.alphaGroup),
+                ('Grid', c.gridGroup),
+                ('Points', c.pointsGroup),
+            ]
+            
+            
+            self.ctrlMenu = QtGui.QMenu()
+            
+            self.ctrlMenu.setTitle('Plot Options')
+            self.subMenus = []
+            for name, grp in menuItems:
+                sm = QtGui.QMenu(name)
+                act = QtGui.QWidgetAction(self)
+                act.setDefaultWidget(grp)
+                sm.addAction(act)
+                self.subMenus.append(sm)
+                self.ctrlMenu.addMenu(sm)
+            
+            self.stateGroup = WidgetGroup()
+            for name, w in menuItems:
+                self.stateGroup.autoAdd(w)
+        
+        
+            c.alphaGroup.toggled.connect(self.updateAlpha)
+            c.alphaSlider.valueChanged.connect(self.updateAlpha)
+            c.autoAlphaCheck.toggled.connect(self.updateAlpha)
+
+            c.xGridCheck.toggled.connect(self.updateGrid)
+            c.yGridCheck.toggled.connect(self.updateGrid)
+            c.gridAlphaSlider.valueChanged.connect(self.updateGrid)
+
+            c.fftCheck.toggled.connect(self.updateSpectrumMode)
+            c.logXCheck.toggled.connect(self.updateLogMode)
+            c.logYCheck.toggled.connect(self.updateLogMode)
+
+            c.downsampleSpin.valueChanged.connect(self.updateDownsampling)
+            c.downsampleCheck.toggled.connect(self.updateDownsampling)
+            c.autoDownsampleCheck.toggled.connect(self.updateDownsampling)
+            c.subsampleRadio.toggled.connect(self.updateDownsampling)
+            c.meanRadio.toggled.connect(self.updateDownsampling)
+            c.clipToViewCheck.toggled.connect(self.updateDownsampling)
+
+            self.ctrl.avgParamList.itemClicked.connect(self.avgParamListClicked)
+            self.ctrl.averageGroup.toggled.connect(self.avgToggled)
+            
+            self.ctrl.maxTracesCheck.toggled.connect(self.updateDecimation)
+            self.ctrl.maxTracesSpin.valueChanged.connect(self.updateDecimation)
         
     def implements(self, interface=None):
         return interface in ['ViewBoxWrapper']

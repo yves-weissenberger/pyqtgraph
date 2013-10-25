@@ -158,7 +158,8 @@ class ViewBox(GraphicsWidget):
         self.setAspectLocked(lockAspect)
         
         self.border = fn.mkPen(border)
-        self.menu = ViewBoxMenu(self)
+        if enableMenu:
+            self.menu = ViewBoxMenu(self)
         
         self.register(name)
         if name is None:
@@ -1340,7 +1341,8 @@ class ViewBox(GraphicsWidget):
         if self in nv:
             nv.remove(self)
             
-        self.menu.setViewList(nv)
+        if self.state['enableMenu']:
+            self.menu.setViewList(nv)
         
         for ax in [0,1]:
             link = self.state['linkedViews'][ax]
