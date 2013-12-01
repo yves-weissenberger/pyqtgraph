@@ -92,10 +92,10 @@ class DateTimeAxisItem(AxisItem):
             #args.update({levels[i][1]: getattr(minDate, levels[i][1]) for i in range(startLevel)})
             tick = datetime.datetime(**args)
             dt = datetime.timedelta(seconds=(levels[tickLevel][0]+0.5)*levels[tickLevel][2])
-            print "start level:", tickLevel, levels[tickLevel][1]
-            print "start args:", args
-            print "start tick:", tick
-            print "dt:", dt
+            #print "start level:", tickLevel, levels[tickLevel][1]
+            #print "start args:", args
+            #print "start tick:", tick
+            #print "dt:", dt
 
             # make list of ticks
             ticks = []
@@ -118,29 +118,6 @@ class DateTimeAxisItem(AxisItem):
         if len(values) == 0:
             return []
         strns = []
-        #rng = max(values)-min(values)
-        ##if rng < 120:
-        ##    return pg.AxisItem.tickStrings(self, values, scale, spacing)
-        #if rng < 1:
-            #string = '%H:%M:%s'
-            #label1 = '%b %d -'
-            #label2 = ' %b %d, %Y'
-        #elif rng < 3600*24:
-            #string = '%H:%M:%S'
-            #label1 = '%b %d -'
-            #label2 = ' %b %d, %Y'
-        #elif rng >= 3600*24 and rng < 3600*24*30:
-            #string = '%d'
-            #label1 = '%b - '
-            #label2 = '%b, %Y'
-        #elif rng >= 3600*24*30 and rng < 3600*24*365:
-            #string = '%b'
-            #label1 = '%Y -'
-            #label2 = ' %Y'
-        #elif rng >= 3600*24*365:
-            #string = '%Y'
-            #label1 = ''
-            #label2 = ''
         string = None
         if spacing > 3600*24*365:
             string, label1, label2 = self.formats['year']
@@ -151,8 +128,6 @@ class DateTimeAxisItem(AxisItem):
                 string, label1, label2 = self.formats[lev[3]]
         if string is None:
             print "unknown spacing:", spacing
-            
-            
             
         for x in values:
             try:
@@ -169,5 +144,5 @@ class DateTimeAxisItem(AxisItem):
             label = time.strftime(label1, time.localtime(min(values)))+time.strftime(label2, time.localtime(max(values)))
         except ValueError:
             label = ''
-        #self.setLabel(text=label)
+        self.setLabel(text=label)
         return strns

@@ -17,6 +17,7 @@ axis = pg.DateTimeAxisItem(orientation='bottom')
 pw = pg.PlotWidget(axisItems={'bottom': axis})
 pw.setWindowTitle('pyqtgraph example: DateTimeAxis')
 pw.show()
+pw.setXRange(1383960000, 1384020000) 
 
 ## Start Qt event loop unless running in interactive mode or using pyside.
 if __name__ == '__main__':
