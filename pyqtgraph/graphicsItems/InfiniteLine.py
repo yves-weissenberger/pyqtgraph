@@ -44,6 +44,7 @@ class InfiniteLine(GraphicsObject):
         
         GraphicsObject.__init__(self)
         
+        self.logMode = (False,False)
         if bounds is None:              ## allowed value boundaries for orthogonal lines
             self.maxRange = [None, None]
         else:
@@ -67,7 +68,7 @@ class InfiniteLine(GraphicsObject):
         """Set whether the line is movable by the user."""
         self.movable = m
         self.setAcceptHoverEvents(m)
-      
+        
     def setBounds(self, bounds):
         """Set the (minimum, maximum) allowable values when dragging."""
         self.maxRange = bounds
@@ -118,6 +119,11 @@ class InfiniteLine(GraphicsObject):
                 newPos[1] = max(newPos[1], self.maxRange[0])
             if self.maxRange[1] is not None:
                 newPos[1] = min(newPos[1], self.maxRange[1])
+        
+        if self.logMode[0]:
+            newPos[0] = np.log10(newPos[0])
+        if self.logMode[1]:
+            newPos[1] = np.log10(newPos[1])
             
         if self.p != newPos:
             self.p = newPos
@@ -126,13 +132,18 @@ class InfiniteLine(GraphicsObject):
             self.sigPositionChanged.emit(self)
 
     def getXPos(self):
-        return self.p[0]
+        return self.getPos()[0]
         
     def getYPos(self):
-        return self.p[1]
+        return self.getPos()[1]
         
     def getPos(self):
-        return self.p
+        pos = self.p[:]
+        if self.logMode[0]:
+            pos[0] = 10**pos[0]
+        if self.logMode[1]:
+            pos[1] = 10**pos[1]
+        return pos
 
     def value(self):
         """Return the value of the line. Will be a single number for horizontal and 
@@ -215,7 +226,13 @@ class InfiniteLine(GraphicsObject):
                 return
                 
             #pressDelta = self.mapToParent(ev.buttonDownPos()) - Point(self.p)
-            self.setPos(self.cursorOffset + self.mapToParent(ev.pos()))
+            pos = self.cursorOffset + self.mapToParent(ev.pos())
+            if self.logMode[0]:
+                pos.setX(10**pos.x())
+            if self.logMode[1]:
+                pos.setY(10**pos.y())
+            
+            self.setPos(pos)
             self.sigDragged.emit(self)
             if ev.isFinish():
                 self.moving = False
@@ -249,29 +266,9 @@ class InfiniteLine(GraphicsObject):
             self.currentPen = self.pen
         self.update()
         
-    #def hoverEnterEvent(self, ev):
-        #print "line hover enter"
-        #ev.ignore()
-        #self.updateHoverPen()
-
-    #def hoverMoveEvent(self, ev):
-        #print "line hover move"
-        #ev.ignore()
-        #self.updateHoverPen()
-
-    #def hoverLeaveEvent(self, ev):
-        #print "line hover leave"
-        #ev.ignore()
-        #self.updateHoverPen(False)
-        
-    #def updateHoverPen(self, hover=None):
-        #if hover is None:
-            #scene = self.scene()
-            #hover = scene.claimEvent(self, QtCore.Qt.LeftButton, scene.Drag)
-        
-        #if hover:
-            #self.currentPen = fn.mkPen(255, 0,0)
-        #else:
-            #self.currentPen = self.pen
-        #self.update()
-
+    def setLogMode(self, x, y):
+        if self.logMode == (x,y):
+            return
+        value = self.value()
+        self.logMode = (x,y)
+        self.setValue(value)
