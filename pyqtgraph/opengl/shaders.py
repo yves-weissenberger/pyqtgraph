@@ -17,6 +17,7 @@ def initShaders():
         ## this is useful for viewing shells that enclose a volume (such as isosurfaces)
         ShaderProgram('balloon', [
             VertexShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     // compute here for use in fragment shader
@@ -27,6 +28,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     vec4 color = gl_Color;
@@ -40,6 +42,7 @@ def initShaders():
         ## This means that the colors will change depending on how the view is rotated
         ShaderProgram('viewNormalColor', [   
             VertexShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     // compute here for use in fragment shader
@@ -50,6 +53,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     vec4 color = gl_Color;
@@ -64,6 +68,7 @@ def initShaders():
         ## colors fragments based on absolute face normals.
         ShaderProgram('normalColor', [   
             VertexShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     // compute here for use in fragment shader
@@ -74,6 +79,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     vec4 color = gl_Color;
@@ -89,6 +95,7 @@ def initShaders():
         ## The light source position is always relative to the camera.
         ShaderProgram('shaded', [   
             VertexShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     // compute here for use in fragment shader
@@ -99,6 +106,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     float p = dot(normal, normalize(vec3(1.0, -1.0, -1.0)));
@@ -115,6 +123,7 @@ def initShaders():
         ## colors get brighter near edges of object
         ShaderProgram('edgeHilight', [   
             VertexShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     // compute here for use in fragment shader
@@ -125,6 +134,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 varying vec3 normal;
                 void main() {
                     vec4 color = gl_Color;
@@ -146,6 +156,7 @@ def initShaders():
         ## (set the values like this: shader['uniformMap'] = array([...])
         ShaderProgram('heightColor', [
             VertexShader("""
+                #version 120
                 varying vec4 pos;
                 void main() {
                     gl_FrontColor = gl_Color;
@@ -155,6 +166,7 @@ def initShaders():
                 }
             """),
             FragmentShader("""
+                #version 120
                 uniform float colorMap[9];
                 varying vec4 pos;
                 //out vec4 gl_FragColor;   // only needed for later glsl versions
@@ -189,6 +201,7 @@ def initShaders():
             ##
             ##
             VertexShader("""
+                #version 120
                 void main() {
                     gl_FrontColor=gl_Color;
                     gl_PointSize = gl_Normal.x;
