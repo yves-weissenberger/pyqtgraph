@@ -1,8 +1,7 @@
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from ..Qt import QtGui, QtCore
 from .Exporter import Exporter
-from pyqtgraph.parametertree import Parameter
-
+from ..parametertree import Parameter
+from .. import PlotItem
 
 __all__ = ['CSVExporter']
     
@@ -22,7 +21,7 @@ class CSVExporter(Exporter):
     
     def export(self, fileName=None):
         
-        if not isinstance(self.item, pg.PlotItem):
+        if not isinstance(self.item, PlotItem):
             raise Exception("Must have a PlotItem selected for CSV export.")
         
         if fileName is None:
@@ -33,8 +32,14 @@ class CSVExporter(Exporter):
         data = []
         header = []
         for c in self.item.curves:
-            data.append(c.getData())
-            header.extend(['x', 'y'])
+            cd = c.getData()
+            if cd[0] is None:
+                continue
+            data.append(cd)
+            name = ''
+            if hasattr(c, 'implements') and c.implements('plotData') and c.name() is not None:
+                name = c.name().replace('"', '""') + '_'
+            header.extend(['"'+name+'x"', '"'+name+'y"'])
 
         if self.params['separator'] == 'comma':
             sep = ','
@@ -44,16 +49,17 @@ class CSVExporter(Exporter):
         fd.write(sep.join(header) + '\n')
         i = 0
         numFormat = '%%0.%dg' % self.params['precision']
-        numRows = reduce(max, [len(d[0]) for d in data])
+        numRows = max([len(d[0]) for d in data])
         for i in range(numRows):
             for d in data:
-                if i < len(d[0]):
-                    fd.write(numFormat % d[0][i] + sep + numFormat % d[1][i] + sep)
-                else:
-                    fd.write(' %s %s' % (sep, sep))
+                for j in [0, 1]:
+                    if i < len(d[j]):
+                        fd.write(numFormat % d[j][i] + sep)
+                    else:
+                        fd.write(' %s' % sep)
             fd.write('\n')
         fd.close()
 
-        
+CSVExporter.register()        
                 
         

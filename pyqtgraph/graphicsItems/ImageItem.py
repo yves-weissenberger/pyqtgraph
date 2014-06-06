@@ -1,9 +1,12 @@
-from pyqtgraph.Qt import QtGui, QtCore
+from __future__ import division
+
+from ..Qt import QtGui, QtCore
 import numpy as np
 import collections
-import pyqtgraph.functions as fn
-import pyqtgraph.debug as debug
+from .. import functions as fn
+from .. import debug as debug
 from .GraphicsObject import GraphicsObject
+from ..Point import Point
 
 __all__ = ['ImageItem']
 class ImageItem(GraphicsObject):
@@ -32,20 +35,16 @@ class ImageItem(GraphicsObject):
         See :func:`setImage <pyqtgraph.ImageItem.setImage>` for all allowed initialization arguments.
         """
         GraphicsObject.__init__(self)
-        #self.pixmapItem = QtGui.QGraphicsPixmapItem(self)
-        #self.qimage = QtGui.QImage()
-        #self._pixmap = None
         self.menu = None
         self.image = None   ## original image data
         self.qimage = None  ## rendered image for display
-        #self.clipMask = None
         
         self.paintMode = None
         
         self.levels = None  ## [min, max] or [[redMin, redMax], ...]
         self.lut = None
+        self.autoDownsample = False
         
-        #self.clipLevel = None
         self.drawKernel = None
         self.border = None
         self.removable = False
@@ -140,7 +139,18 @@ class ImageItem(GraphicsObject):
         if update:
             self.updateImage()
 
+    def setAutoDownsample(self, ads):
+        """
+        Set the automatic downsampling mode for this ImageItem.
+        
+        Added in version 0.9.9
+        """
+        self.autoDownsample = ads
+        self.qimage = None
+        self.update()
+
     def setOpts(self, update=True, **kargs):
+        
         if 'lut' in kargs:
             self.setLookupTable(kargs['lut'], update=update)
         if 'levels' in kargs:
@@ -156,6 +166,10 @@ class ImageItem(GraphicsObject):
         if 'removable' in kargs:
             self.removable = kargs['removable']
             self.menu = None
+        if 'autoDownsample' in kargs:
+            self.setAutoDownsample(kargs['autoDownsample'])
+        if update:
+            self.update()
 
     def setRect(self, rect):
         """Scale and translate the image to fit within rect (must be a QRect or QRectF)."""
@@ -186,10 +200,13 @@ class ImageItem(GraphicsObject):
         opacity            (float 0.0-1.0)
         compositionMode    see :func:`setCompositionMode <pyqtgraph.ImageItem.setCompositionMode>`
         border             Sets the pen used when drawing the image border. Default is None.
+        autoDownsample     (bool) If True, the image is automatically downsampled to match the
+                           screen resolution. This improves performance for large images and 
+                           reduces aliasing.
         =================  =========================================================================
         """
-        prof = debug.Profiler('ImageItem.setImage', disabled=True)
-        
+        profile = debug.Profiler()
+
         gotNewData = False
         if image is None:
             if self.image is None:
@@ -198,12 +215,15 @@ class ImageItem(GraphicsObject):
             gotNewData = True
             shapeChanged = (self.image is None or image.shape != self.image.shape)
             self.image = image.view(np.ndarray)
+            if self.image.shape[0] > 2**15-1 or self.image.shape[1] > 2**15-1:
+                if 'autoDownsample' not in kargs:
+                    kargs['autoDownsample'] = True
             if shapeChanged:
                 self.prepareGeometryChange()
                 self.informViewBoundsChanged()
-                
-        prof.mark('1')
-            
+
+        profile()
+
         if autoLevels is None:
             if 'levels' in kargs:
                 autoLevels = False
@@ -218,21 +238,20 @@ class ImageItem(GraphicsObject):
                 mn = 0
                 mx = 255
             kargs['levels'] = [mn,mx]
-        prof.mark('2')
-        
+
+        profile()
+
         self.setOpts(update=False, **kargs)
-        prof.mark('3')
-        
+
+        profile()
+
         self.qimage = None
         self.update()
-        prof.mark('4')
+
+        profile()
 
         if gotNewData:
             self.sigImageChanged.emit()
-
-
-        prof.finish()
-
 
 
     def updateImage(self, *args, **kargs):
@@ -245,45 +264,53 @@ class ImageItem(GraphicsObject):
         }
         defaults.update(kargs)
         return self.setImage(*args, **defaults)
-        
-        
-
 
     def render(self):
-        prof = debug.Profiler('ImageItem.render', disabled=True)
+        # Convert data to QImage for display.
+        
+        profile = debug.Profiler()
         if self.image is None or self.image.size == 0:
             return
         if isinstance(self.lut, collections.Callable):
             lut = self.lut(self.image)
         else:
             lut = self.lut
-        #print lut.shape
-        #print self.lut
-            
-        argb, alpha = fn.makeARGB(self.image, lut=lut, levels=self.levels)
-        self.qimage = fn.makeQImage(argb, alpha)
-        prof.finish()
-    
+
+        if self.autoDownsample:
+            # reduce dimensions of image based on screen resolution
+            o = self.mapToDevice(QtCore.QPointF(0,0))
+            x = self.mapToDevice(QtCore.QPointF(1,0))
+            y = self.mapToDevice(QtCore.QPointF(0,1))
+            w = Point(x-o).length()
+            h = Point(y-o).length()
+            xds = max(1, int(1/w))
+            yds = max(1, int(1/h))
+            image = fn.downsample(self.image, xds, axis=0)
+            image = fn.downsample(image, yds, axis=1)
+        else:
+            image = self.image
+        
+        argb, alpha = fn.makeARGB(image.transpose((1, 0, 2)[:image.ndim]), lut=lut, levels=self.levels)
+        self.qimage = fn.makeQImage(argb, alpha, transpose=False)
 
     def paint(self, p, *args):
-        prof = debug.Profiler('ImageItem.paint', disabled=True)
+        profile = debug.Profiler()
         if self.image is None:
             return
         if self.qimage is None:
             self.render()
             if self.qimage is None:
                 return
-            prof.mark('render QImage')
+            profile('render QImage')
         if self.paintMode is not None:
             p.setCompositionMode(self.paintMode)
-            prof.mark('set comp mode')
-        
-        p.drawImage(QtCore.QPointF(0,0), self.qimage)
-        prof.mark('p.drawImage')
+            profile('set comp mode')
+
+        p.drawImage(QtCore.QRectF(0,0,self.image.shape[0],self.image.shape[1]), self.qimage)
+        profile('p.drawImage')
         if self.border is not None:
             p.setPen(self.border)
             p.drawRect(self.boundingRect())
-        prof.finish()
 
     def save(self, fileName, *args):
         """Save this image to file. Note that this saves the visible image (after scale/color changes), not the original data."""
@@ -291,15 +318,47 @@ class ImageItem(GraphicsObject):
             self.render()
         self.qimage.save(fileName, *args)
 
-    def getHistogram(self, bins=500, step=3):
+    def getHistogram(self, bins='auto', step='auto', targetImageSize=200, targetHistogramSize=500, **kwds):
         """Returns x and y arrays containing the histogram values for the current image.
-        The step argument causes pixels to be skipped when computing the histogram to save time.
+        For an explanation of the return format, see numpy.histogram().
+        
+        The *step* argument causes pixels to be skipped when computing the histogram to save time.
+        If *step* is 'auto', then a step is chosen such that the analyzed data has
+        dimensions roughly *targetImageSize* for each axis.
+        
+        The *bins* argument and any extra keyword arguments are passed to 
+        np.histogram(). If *bins* is 'auto', then a bin number is automatically
+        chosen based on the image characteristics:
+        
+        * Integer images will have approximately *targetHistogramSize* bins, 
+          with each bin having an integer width.
+        * All other types will have *targetHistogramSize* bins.
+        
         This method is also used when automatically computing levels.
         """
         if self.image is None:
             return None,None
-        stepData = self.image[::step, ::step]
-        hist = np.histogram(stepData, bins=bins)
+        if step == 'auto':
+            step = (np.ceil(self.image.shape[0] / targetImageSize),
+                    np.ceil(self.image.shape[1] / targetImageSize))
+        if np.isscalar(step):
+            step = (step, step)
+        stepData = self.image[::step[0], ::step[1]]
+        
+        if bins == 'auto':
+            if stepData.dtype.kind in "ui":
+                mn = stepData.min()
+                mx = stepData.max()
+                step = np.ceil((mx-mn) / 500.)
+                bins = np.arange(mn, mx+1.01*step, step, dtype=np.int)
+                if len(bins) == 0:
+                    bins = [mn, mx]
+            else:
+                bins = 500
+
+        kwds['bins'] = bins
+        hist = np.histogram(stepData, **kwds)
+        
         return hist[1][:-1], hist[0]
 
     def setPxMode(self, b):
@@ -327,6 +386,11 @@ class ImageItem(GraphicsObject):
         if self.image is None:
             return 1,1
         return br.width()/self.width(), br.height()/self.height()
+    
+    def viewTransformChanged(self):
+        if self.autoDownsample:
+            self.qimage = None
+            self.update()
 
     #def mousePressEvent(self, ev):
         #if self.drawKernel is not None and ev.button() == QtCore.Qt.LeftButton:

@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-from pyqtgraph.Qt import QtCore, QtGui
+from ...Qt import QtCore, QtGui
 from ..Node import Node
-from scipy.signal import detrend
-from scipy.ndimage import median_filter, gaussian_filter
-#from pyqtgraph.SignalProxy import SignalProxy
 from . import functions
+from ... import functions as pgfn
 from .common import *
 import numpy as np
 
-import pyqtgraph.metaarray as metaarray
+from ... import metaarray as metaarray
 
 
 class Downsample(CtrlNode):
@@ -119,7 +117,11 @@ class Median(CtrlNode):
     
     @metaArrayWrapper
     def processData(self, data):
-        return median_filter(data, self.ctrls['n'].value())
+        try:
+            import scipy.ndimage
+        except ImportError:
+            raise Exception("MedianFilter node requires the package scipy.ndimage.")
+        return scipy.ndimage.median_filter(data, self.ctrls['n'].value())
 
 class Mode(CtrlNode):
     """Filters data by taking the mode (histogram-based) of a sliding window"""
@@ -156,7 +158,11 @@ class Gaussian(CtrlNode):
     
     @metaArrayWrapper
     def processData(self, data):
-        return gaussian_filter(data, self.ctrls['sigma'].value())
+        try:
+            import scipy.ndimage
+        except ImportError:
+            raise Exception("GaussianFilter node requires the package scipy.ndimage.")
+        return pgfn.gaussianFilter(data, self.ctrls['sigma'].value())
 
 
 class Derivative(CtrlNode):
@@ -189,6 +195,10 @@ class Detrend(CtrlNode):
     
     @metaArrayWrapper
     def processData(self, data):
+        try:
+            from scipy.signal import detrend
+        except ImportError:
+            raise Exception("DetrendFilter node requires the package scipy.signal.")
         return detrend(data)
 
 

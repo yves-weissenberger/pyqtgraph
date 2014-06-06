@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtGui, QtCore, USE_PYSIDE
+from ..Qt import QtGui, QtCore, USE_PYSIDE
 if not USE_PYSIDE:
     import sip
 from .GraphicsItem import GraphicsItem
@@ -12,6 +12,7 @@ class GraphicsObject(GraphicsItem, QtGui.QGraphicsObject):
     """
     _qtBaseClass = QtGui.QGraphicsObject
     def __init__(self, *args):
+        self.__inform_view_on_changes = True
         QtGui.QGraphicsObject.__init__(self, *args)
         self.setFlag(self.ItemSendsGeometryChanges)
         GraphicsItem.__init__(self)
@@ -20,8 +21,15 @@ class GraphicsObject(GraphicsItem, QtGui.QGraphicsObject):
         ret = QtGui.QGraphicsObject.itemChange(self, change, value)
         if change in [self.ItemParentHasChanged, self.ItemSceneHasChanged]:
             self.parentChanged()
-        if change in [self.ItemPositionHasChanged, self.ItemTransformHasChanged]:
-            self.informViewBoundsChanged()
+        try:
+            inform_view_on_change = self.__inform_view_on_changes
+        except AttributeError:
+            # It's possible that the attribute was already collected when the itemChange happened
+            # (if it was triggered during the gc of the object).
+            pass
+        else:
+            if inform_view_on_change and change in [self.ItemPositionHasChanged, self.ItemTransformHasChanged]:
+                self.informViewBoundsChanged()
             
         ## workaround for pyqt bug:
         ## http://www.riverbankcomputing.com/pipermail/pyqt/2012-August/031818.html

@@ -8,6 +8,7 @@ if __name__ == "__main__" and (__package__ is None or __package__==''):
 
 from . import initExample
 from pyqtgraph.Qt import QtCore, QtGui, USE_PYSIDE
+import pyqtgraph as pg
 
 if USE_PYSIDE:
     from .exampleLoaderTemplate_pyside import Ui_Form
@@ -30,12 +31,19 @@ examples = OrderedDict([
     ('Histograms', 'histogram.py'),
     ('Auto-range', 'PlotAutoRange.py'),
     ('Remote Plotting', 'RemoteSpeedTest.py'),
+    ('HDF5 big data', 'hdf5.py'),
+    ('Demos', OrderedDict([
+        ('Optics', 'optics_demos.py'),
+        ('Special relativity', 'relativity_demo.py'),
+        ('Verlet chain', 'verlet_chain_demo.py'),
+    ])),
     ('GraphicsItems', OrderedDict([
         ('Scatter Plot', 'ScatterPlot.py'),
         #('PlotItem', 'PlotItem.py'),
         ('IsocurveItem', 'isocurve.py'),
         ('GraphItem', 'GraphItem.py'),
         ('ErrorBarItem', 'ErrorBarItem.py'),
+        ('FillBetweenItem', 'FillBetweenItem.py'),
         ('ImageItem - video', 'ImageItem.py'),
         ('ImageItem - draw', 'Draw.py'),
         ('Region-of-Interest', 'ROIExamples.py'),
@@ -51,6 +59,7 @@ examples = OrderedDict([
         ('Video speed test', 'VideoSpeedTest.py'),
         ('Line Plot update', 'PlotSpeedTest.py'),
         ('Scatter Plot update', 'ScatterPlotSpeedTest.py'),
+        ('Multiple plots', 'MultiPlotSpeedTest.py'),
     ])),
     ('3D Graphics', OrderedDict([
         ('Volumetric', 'GLVolumeItem.py'),
@@ -252,6 +261,7 @@ except:
     else:
         process = subprocess.Popen(['exec %s -i' % (exe)], shell=True, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         process.stdin.write(code.encode('UTF-8'))
+        process.stdin.close() ##?
     output = ''
     fail = False
     while True:
@@ -266,8 +276,8 @@ except:
             break
     time.sleep(1)
     process.kill()
-    #process.wait()
-    res = process.communicate()
+    #res = process.communicate()
+    res = (process.stdout.read(), process.stderr.read())
     
     if fail or 'exception' in res[1].decode().lower() or 'error' in res[1].decode().lower():
         print('.' * (50-len(name)) + 'FAILED')
@@ -280,6 +290,9 @@ except:
 
 if __name__ == '__main__':
     if '--test' in sys.argv[1:]:
+        # get rid of orphaned cache files first
+        pg.renamePyc(path)
+
         files = buildFileList(examples)
         if '--pyside' in sys.argv[1:]:
             lib = 'PySide'

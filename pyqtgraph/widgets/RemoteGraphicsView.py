@@ -1,9 +1,9 @@
-from pyqtgraph.Qt import QtGui, QtCore, USE_PYSIDE
+from ..Qt import QtGui, QtCore, USE_PYSIDE
 if not USE_PYSIDE:
     import sip
-import pyqtgraph.multiprocess as mp
-import pyqtgraph as pg
+from .. import multiprocess as mp
 from .GraphicsView import GraphicsView
+from .. import CONFIG_OPTIONS
 import numpy as np
 import mmap, tempfile, ctypes, atexit, sys, random
 
@@ -18,16 +18,27 @@ class RemoteGraphicsView(QtGui.QWidget):
     
     """
     def __init__(self, parent=None, *args, **kwds):
+        """
+        The keyword arguments 'useOpenGL' and 'backgound', if specified, are passed to the remote
+        GraphicsView.__init__(). All other keyword arguments are passed to multiprocess.QtProcess.__init__().
+        """
         self._img = None
         self._imgReq = None
         self._sizeHint = (640,480)  ## no clue why this is needed, but it seems to be the default sizeHint for GraphicsView.
                                     ## without it, the widget will not compete for space against another GraphicsView.
         QtGui.QWidget.__init__(self)
-        self._proc = mp.QtProcess(debug=kwds.pop('debug', False))
+
+        # separate local keyword arguments from remote.
+        remoteKwds = {}
+        for kwd in ['useOpenGL', 'background']:
+            if kwd in kwds:
+                remoteKwds[kwd] = kwds.pop(kwd)
+
+        self._proc = mp.QtProcess(**kwds)
         self.pg = self._proc._import('pyqtgraph')
-        self.pg.setConfigOptions(**self.pg.CONFIG_OPTIONS)
+        self.pg.setConfigOptions(**CONFIG_OPTIONS)
         rpgRemote = self._proc._import('pyqtgraph.widgets.RemoteGraphicsView')
-        self._view = rpgRemote.Renderer(*args, **kwds)
+        self._view = rpgRemote.Renderer(*args, **remoteKwds)
         self._view._setProxyOptions(deferGetattr=True)
         
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
@@ -69,7 +80,9 @@ class RemoteGraphicsView(QtGui.QWidget):
             else:
                 self.shm = mmap.mmap(self.shmFile.fileno(), size, mmap.MAP_SHARED, mmap.PROT_READ)
         self.shm.seek(0)
-        self._img = QtGui.QImage(self.shm.read(w*h*4), w, h, QtGui.QImage.Format_ARGB32)
+        data = self.shm.read(w*h*4)
+        self._img = QtGui.QImage(data, w, h, QtGui.QImage.Format_ARGB32)
+        self._img.data = data  # data must be kept alive or PySide 1.2.1 (and probably earlier) will crash.
         self.update()
         
     def paintEvent(self, ev):
@@ -80,42 +93,47 @@ class RemoteGraphicsView(QtGui.QWidget):
         p.end()
         
     def mousePressEvent(self, ev):
-        self._view.mousePressEvent(ev.type(), ev.pos(), ev.globalPos(), ev.button(), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
+        self._view.mousePressEvent(int(ev.type()), ev.pos(), ev.globalPos(), int(ev.button()), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
         ev.accept()
         return QtGui.QWidget.mousePressEvent(self, ev)
 
     def mouseReleaseEvent(self, ev):
-        self._view.mouseReleaseEvent(ev.type(), ev.pos(), ev.globalPos(), ev.button(), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
+        self._view.mouseReleaseEvent(int(ev.type()), ev.pos(), ev.globalPos(), int(ev.button()), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
         ev.accept()
         return QtGui.QWidget.mouseReleaseEvent(self, ev)
 
     def mouseMoveEvent(self, ev):
-        self._view.mouseMoveEvent(ev.type(), ev.pos(), ev.globalPos(), ev.button(), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
+        self._view.mouseMoveEvent(int(ev.type()), ev.pos(), ev.globalPos(), int(ev.button()), int(ev.buttons()), int(ev.modifiers()), _callSync='off')
         ev.accept()
         return QtGui.QWidget.mouseMoveEvent(self, ev)
         
     def wheelEvent(self, ev):
-        self._view.wheelEvent(ev.pos(), ev.globalPos(), ev.delta(), int(ev.buttons()), int(ev.modifiers()), ev.orientation(), _callSync='off')
+        self._view.wheelEvent(ev.pos(), ev.globalPos(), ev.delta(), int(ev.buttons()), int(ev.modifiers()), int(ev.orientation()), _callSync='off')
         ev.accept()
         return QtGui.QWidget.wheelEvent(self, ev)
     
     def keyEvent(self, ev):
-        if self._view.keyEvent(ev.type(), int(ev.modifiers()), text, autorep, count):
+        if self._view.keyEvent(int(ev.type()), int(ev.modifiers()), text, autorep, count):
             ev.accept()
         return QtGui.QWidget.keyEvent(self, ev)
         
     def enterEvent(self, ev):
-        self._view.enterEvent(ev.type(), _callSync='off')
+        self._view.enterEvent(int(ev.type()), _callSync='off')
         return QtGui.QWidget.enterEvent(self, ev)
         
     def leaveEvent(self, ev):
-        self._view.leaveEvent(ev.type(), _callSync='off')
+        self._view.leaveEvent(int(ev.type()), _callSync='off')
         return QtGui.QWidget.leaveEvent(self, ev)
         
     def remoteProcess(self):
         """Return the remote process handle. (see multiprocess.remoteproxy.RemoteEventHandler)"""
         return self._proc
-    
+
+    def close(self):
+        """Close the remote process. After this call, the widget will no longer be updated."""
+        self._proc.close()
+
+
 class Renderer(GraphicsView):
     ## Created by the remote process to handle render requests
     
@@ -123,6 +141,7 @@ class Renderer(GraphicsView):
     
     def __init__(self, *args, **kwds):
         ## Create shared memory for rendered image
+        #pg.dbg(namespace={'r': self})
         if sys.platform.startswith('win'):
             self.shmtag = "pyqtgraph_shmem_" + ''.join([chr((random.getrandbits(20)%25) + 97) for i in range(20)])
             self.shm = mmap.mmap(-1, mmap.PAGESIZE, self.shmtag) # use anonymous mmap on windows
@@ -142,9 +161,9 @@ class Renderer(GraphicsView):
         
     def close(self):
         self.shm.close()
-        if sys.platform.startswith('win'):
+        if not sys.platform.startswith('win'):
             self.shmFile.close()
-        
+
     def shmFileName(self):
         if sys.platform.startswith('win'):
             return self.shmtag
@@ -184,7 +203,16 @@ class Renderer(GraphicsView):
                 self.img = QtGui.QImage(ch, self.width(), self.height(), QtGui.QImage.Format_ARGB32)
             else:
                 address = ctypes.addressof(ctypes.c_char.from_buffer(self.shm, 0))
-                self.img = QtGui.QImage(sip.voidptr(address), self.width(), self.height(), QtGui.QImage.Format_ARGB32)
+
+                # different versions of pyqt have different requirements here..
+                try:
+                    self.img = QtGui.QImage(sip.voidptr(address), self.width(), self.height(), QtGui.QImage.Format_ARGB32)
+                except TypeError:
+                    try:
+                        self.img = QtGui.QImage(memoryview(buffer(self.shm)), self.width(), self.height(), QtGui.QImage.Format_ARGB32)
+                    except TypeError:
+                        # Works on PyQt 4.9.6
+                        self.img = QtGui.QImage(address, self.width(), self.height(), QtGui.QImage.Format_ARGB32)
             self.img.fill(0xffffffff)
             p = QtGui.QPainter(self.img)
             self.render(p, self.viewRect(), self.rect())
@@ -193,18 +221,21 @@ class Renderer(GraphicsView):
 
     def mousePressEvent(self, typ, pos, gpos, btn, btns, mods):
         typ = QtCore.QEvent.Type(typ)
+        btn = QtCore.Qt.MouseButton(btn)
         btns = QtCore.Qt.MouseButtons(btns)
         mods = QtCore.Qt.KeyboardModifiers(mods)
         return GraphicsView.mousePressEvent(self, QtGui.QMouseEvent(typ, pos, gpos, btn, btns, mods))
 
     def mouseMoveEvent(self, typ, pos, gpos, btn, btns, mods):
         typ = QtCore.QEvent.Type(typ)
+        btn = QtCore.Qt.MouseButton(btn)
         btns = QtCore.Qt.MouseButtons(btns)
         mods = QtCore.Qt.KeyboardModifiers(mods)
         return GraphicsView.mouseMoveEvent(self, QtGui.QMouseEvent(typ, pos, gpos, btn, btns, mods))
 
     def mouseReleaseEvent(self, typ, pos, gpos, btn, btns, mods):
         typ = QtCore.QEvent.Type(typ)
+        btn = QtCore.Qt.MouseButton(btn)
         btns = QtCore.Qt.MouseButtons(btns)
         mods = QtCore.Qt.KeyboardModifiers(mods)
         return GraphicsView.mouseReleaseEvent(self, QtGui.QMouseEvent(typ, pos, gpos, btn, btns, mods))
@@ -212,6 +243,7 @@ class Renderer(GraphicsView):
     def wheelEvent(self, pos, gpos, d, btns, mods, ori):
         btns = QtCore.Qt.MouseButtons(btns)
         mods = QtCore.Qt.KeyboardModifiers(mods)
+        ori = (None, QtCore.Qt.Horizontal, QtCore.Qt.Vertical)[ori]
         return GraphicsView.wheelEvent(self, QtGui.QWheelEvent(pos, gpos, d, btns, mods, ori))
 
     def keyEvent(self, typ, mods, text, autorep, count):
@@ -228,6 +260,3 @@ class Renderer(GraphicsView):
         ev = QtCore.QEvent(QtCore.QEvent.Type(typ))
         return GraphicsView.leaveEvent(self, ev)
 
-
-        
-        
