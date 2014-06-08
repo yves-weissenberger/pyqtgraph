@@ -74,12 +74,15 @@ def siScale(x, minVal=1e-25, allowUnicode=True):
     
     return (p, pref)    
 
-def siFormat(x, precision=3, suffix='', space=True, error=None, minVal=1e-25, allowUnicode=True):
+def siFormat(x, precision=3, suffix='', space=True, error=None, minVal=1e-25,
+        allowUnicode=True, groupedError=False):
     """
     Return the number x formatted in engineering notation with SI prefix.
     
     Example::
         siFormat(0.0001, suffix='V')  # returns "100 μV"
+        siFormat(1000, suffix='V', error=23)  # returns "1 kV ± 23 V"
+        siFormat(1000, suffix='V', error=23, groupedError=True)  # returns "1.00 ±  0.02   kV"
     """
     
     if space is True:
@@ -96,12 +99,42 @@ def siFormat(x, precision=3, suffix='', space=True, error=None, minVal=1e-25, al
         fmt = "%." + str(precision) + "g%s%s"
         return fmt % (x*p, pref, suffix)
     else:
+        error=np.abs(error)
         if allowUnicode:
             plusminus = space + asUnicode("±") + space
         else:
             plusminus = " +/- "
-        fmt = "%." + str(precision) + "g%s%s%s%s"
-        return fmt % (x*p, pref, suffix, plusminus, siFormat(error, precision=precision, suffix=suffix, space=space, minVal=minVal))
+        if groupedError:
+            width=3 if precision<3 else precision #get enough space to print
+            error = error*p
+            x = x*p
+            prec_err = 1
+            if x == 0:
+                precision = 0
+            elif error >= 10:#What is the best formatting for this case?
+                err_log = int(np.log10(error))
+                x_log = int(np.log10(np.abs(x)))
+                error = round(error, -err_log)
+                prec_err = err_log + 1 if err_log<5 else 5
+                precision = 0
+                if error > x:
+                    x = round(x, -x_log)
+                else:
+                    x = round(x, -err_log)
+
+            elif not(error == 0):
+                precision = int(-np.log10(error) + 0.99999999)
+
+            if not(x == 0) and precision + int(np.log10(np.abs(x))) + 1 > width:
+                precision = width - int(np.log10(np.abs(x))) - 1
+
+            fmt = asUnicode("{0:^{width}.{prec}f}{1}{2:^6.{err}g}{sp}{3}{4}")
+            return fmt.format(x, plusminus, error, pref, suffix, 
+                prec=str(precision), err=str(prec_err), sp=space, width=width+1)
+        else:
+            fmt = "%." + str(precision) + "g%s%s%s%s"
+            return fmt % (x*p, pref, suffix, plusminus, siFormat(error,
+                precision=precision, suffix=suffix, space=space, minVal=minVal))
     
 def siEval(s):
     """
@@ -113,7 +146,7 @@ def siEval(s):
     """
     
     s = asUnicode(s)
-    m = re.match(r'(-?((\d+(\.\d*)?)|(\.\d+))([eE]-?\d+)?)\s*([u' + SI_PREFIXES + r']?).*$', s)
+    m = re.match(r'(-?((\d+(\.\d*)?)|(\.\d+))([eE]-?\d+)?)\s*([u'+asUnicode('μ') + SI_PREFIXES + r']?).*$', s)
     if m is None:
         raise Exception("Can't convert string '%s' to number." % s)
     v = float(m.groups()[0])
@@ -122,7 +155,7 @@ def siEval(s):
         #raise Exception("Can't convert string '%s' to number--unknown prefix." % s)
     if p ==  '':
         n = 0
-    elif p == 'u':
+    elif p == 'u' or p == asUnicode('μ'): #µ != μ
         n = -2
     else:
         n = SI_PREFIXES.index(p) - 8
