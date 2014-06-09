@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pyqtgraph as pg
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_almost_equal
@@ -50,7 +51,7 @@ def test_siFormat():
                     )
     
     for inp, out in expected_values:
-        result = fnc.siFormat(*inp[0], **inp[1])
+        result = pg.siFormat(*inp[0], **inp[1])
         assert result == out
 
 

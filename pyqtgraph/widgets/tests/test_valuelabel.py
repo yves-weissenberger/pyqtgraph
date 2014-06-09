@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time
 from pyqtgraph.widgets import ValueLabel
 from pyqtgraph.python2_3 import asUnicode as u
@@ -53,13 +54,13 @@ time3 = [u('6.5e+02'), #1
          ]
 
    
-def test_static(self):
+def test_static():
     for i in xrange(len(init_param)):
         lw = ValueLabel.ValueLabel(**init_param[i])
         lw.setValue(5678.78, 56)
         assert lw.generateText() == value[i]
 
-def  test_dynamic(self):
+def  test_dynamic():
     for i in xrange(len(init_param)):
         lw = ValueLabel.ValueLabel(averageTime=0.01, **init_param[i])
         lw.setValue(100, 56)
