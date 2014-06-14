@@ -26,11 +26,13 @@ examples = OrderedDict([
     ('Crosshair / Mouse interaction', 'crosshair.py'),
     ('Data Slicing', 'DataSlicing.py'),
     ('Plot Customization', 'customPlot.py'),
+    ('Image Analysis', 'imageAnalysis.py'),
     ('Dock widgets', 'dockarea.py'),
     ('Console', 'ConsoleWidget.py'),
     ('Histograms', 'histogram.py'),
     ('Auto-range', 'PlotAutoRange.py'),
     ('Remote Plotting', 'RemoteSpeedTest.py'),
+    ('Scrolling plots', 'scrollingPlots.py'),
     ('HDF5 big data', 'hdf5.py'),
     ('Demos', OrderedDict([
         ('Optics', 'optics_demos.py'),
