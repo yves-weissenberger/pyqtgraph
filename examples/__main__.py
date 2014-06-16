@@ -83,6 +83,7 @@ examples = OrderedDict([
         ('GradientWidget', 'GradientWidget.py'),
         ('TableWidget', 'TableWidget.py'),
         ('ColorButton', 'ColorButton.py'),
+        ('ValueLabel', 'ValueLabel.py'),
         #('CheckTable', '../widgets/CheckTable.py'),
         #('VerticalLabel', '../widgets/VerticalLabel.py'),
         ('JoystickButton', 'JoystickButton.py'),
