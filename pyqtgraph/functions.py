@@ -79,10 +79,32 @@ def siFormat(x, precision=3, suffix='', space=True, error=None, minVal=1e-25,
     """
     Return the number x formatted in engineering notation with SI prefix.
     
-    Example::
+    Examples::
+    
         siFormat(0.0001, suffix='V')  # returns "100 μV"
         siFormat(1000, suffix='V', error=23)  # returns "1 kV ± 23 V"
         siFormat(1000, suffix='V', error=23, groupedError=True)  # returns "1.00 ±  0.02   kV"
+    
+    ============= =============================================================
+    **Arguments**
+    x             The numerical value to format.
+    precision     Number of decimal places to display.
+    suffix        Unit string to display after the number. This string should
+                  not include an SI prefix (milli, micro, mega, etc).
+    space         Whether to include spaces in the formatting.
+    error         An optional error value to be displayed folowing a +/- 
+                  symbol.
+    minVal        The minimum value to be formatted; smaller values will be 
+                  displayed as 0.
+    allowUnicode  If True, the formatting may use unicode symbols (micro and 
+                  +/-)
+    groupedError  If False, the main value and error value will each be 
+                  displayed with SI-prefixed units (with the possibility of
+                  each having a different prefix). If True, then the units are
+                  displayed only once and both values are forced to use the
+                  same scaling.
+    ============= =============================================================
+    
     """
     
     if space is True:
