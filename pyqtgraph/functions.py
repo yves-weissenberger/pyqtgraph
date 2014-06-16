@@ -121,23 +121,23 @@ def siFormat(x, precision=3, suffix='', space=True, error=None, minVal=1e-25,
         fmt = "%." + str(precision) + "g%s%s"
         return fmt % (x*p, pref, suffix)
     else:
-        error=np.abs(error)
+        error = np.abs(error)
         if allowUnicode:
             plusminus = space + asUnicode("±") + space
         else:
             plusminus = " +/- "
         if groupedError:
-            width=3 if precision<3 else precision #get enough space to print
-            error = error*p
-            x = x*p
+            width = 3 if precision < 3 else precision  # get enough space to print
+            error = error * p
+            x = x * p
             prec_err = 1
             if x == 0:
                 precision = 0
-            elif error >= 10:#What is the best formatting for this case?
+            elif error >= 10:  # What is the best formatting for this case?
                 err_log = int(np.log10(error))
                 x_log = int(np.log10(np.abs(x)))
                 error = round(error, -err_log)
-                prec_err = err_log + 1 if err_log<5 else 5
+                prec_err = err_log + 1 if err_log < 5 else 5
                 precision = 0
                 if error > x:
                     x = round(x, -x_log)
