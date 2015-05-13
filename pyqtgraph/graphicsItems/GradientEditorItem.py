@@ -241,6 +241,13 @@ class TickSliderItem(GraphicsWidget):
             pos.setX(min(max(pos.x(), 0), self.length))
             self.addTick(pos.x()/self.length)
         elif ev.button() == QtCore.Qt.RightButton:
+            #if self.moving:
+                #ev.accept()
+                #self.setPos(self.startPosition)
+                #self.moving = False
+                #self.sigMoving.emit(self)
+                #self.sigMoved.emit(self)
+            #else:
             self.showMenu(ev)
 
         #if  ev.button() == QtCore.Qt.RightButton:
