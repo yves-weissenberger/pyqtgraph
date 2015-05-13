@@ -449,7 +449,6 @@ class TableWidgetItem(QtGui.QTableWidgetItem):
             return
         
         try:
-
             self.value = type(self.value)(self.text())
         except ValueError:
             self.value = str(self.text())
